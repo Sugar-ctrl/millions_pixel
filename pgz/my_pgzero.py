@@ -5,22 +5,29 @@
 建议使用from import *导入
 '''
 import math
-from typing import Callable
+from typing import Callable, Tuple, List, Dict
 import pygame
 import os
 
-WIDTH,HEIGHT = 500,500
+WIDTH, HEIGHT = 500, 500
 FPS = 60
 TITLE = 'my pygame zero'
 
-all_sprites = pygame.sprite.Group()
-sprite_groups = {}
+all_sprites: pygame.sprite.Group = pygame.sprite.Group()
+sprite_groups: Dict[type, pygame.sprite.Group] = {}
 
 pygame.init()
 pygame.mixer.init()
-screen = pygame.display.set_mode((WIDTH,HEIGHT))
- 
-def draw_text(text:str, x:int, y:int, size:int=18, color:tuple[int,int,int]=(0,0,0), fontname:str=''):
+screen: pygame.Surface = pygame.display.set_mode((WIDTH, HEIGHT))
+
+def draw_text(
+    text: str, 
+    x: int, 
+    y: int, 
+    size: int = 18, 
+    color: Tuple[int, int, int] = (0, 0, 0), 
+    fontname: str = ''
+) -> None:
     '''
     绘制文字
     参数：
@@ -32,14 +39,14 @@ def draw_text(text:str, x:int, y:int, size:int=18, color:tuple[int,int,int]=(0,0
     fontname: 字体名称
     '''
     try:
-        font = pygame.font.Font(fontname,size)
+        font = pygame.font.Font(fontname, size)
     except:
         font = pygame.font.Font(f'{os.path.abspath(__file__)}/../MSYH.TTC')
-    text_surface = font.render(text,True,color)
+    text_surface = font.render(text, True, color)
     text_rect = text_surface.get_rect()
     text_rect.centerx = x
     text_rect.centery = y
-    screen.blit(text_surface,text_rect)
+    screen.blit(text_surface, text_rect)
 
 class Actor(pygame.sprite.Sprite):
     '''
@@ -51,20 +58,25 @@ class Actor(pygame.sprite.Sprite):
     
     注：如果使用scale指定长宽，则不能使用旋转
     '''
-    def __init__(self,picture:str,colourkey:tuple[int,int,int]=None,scale:tuple[int,int]=None):
+    def __init__(
+        self, 
+        picture: str, 
+        colourkey: Tuple[int, int, int] = None, 
+        scale: Tuple[int, int] = None
+    ) -> None:
         pygame.sprite.Sprite.__init__(self)
 
         if colourkey:
-            self.__genimage__ = pygame.image.load('images/'+picture).convert()
-            self.image = pygame.image.load('images/'+picture).convert()
+            self.__genimage__ = pygame.image.load('images/' + picture).convert()
+            self.image = pygame.image.load('images/' + picture).convert()
             try: 
-                self.image = pygame.transform.scale(self.image,scale)
+                self.image = pygame.transform.scale(self.image, scale)
             except: pass
         else:
-            self.__genimage__ = pygame.image.load('images/'+picture).convert_alpha()
-            self.image = pygame.image.load('images/'+picture).convert_alpha()
+            self.__genimage__ = pygame.image.load('images/' + picture).convert_alpha()
+            self.image = pygame.image.load('images/' + picture).convert_alpha()
             try: 
-                self.image = pygame.transform.scale(self.image,scale)
+                self.image = pygame.transform.scale(self.image, scale)
             except: pass
         self.colorkey = colourkey
         self.scale = scale
@@ -81,7 +93,7 @@ class Actor(pygame.sprite.Sprite):
         self.rotate = 0 # 正数是逆时针
         self.__ro__ = self.rotate
 
-    def update(self):
+    def update(self) -> None:
         '''
         角色每一帧执行的内容
         '''
@@ -93,37 +105,42 @@ class Actor(pygame.sprite.Sprite):
             if self.colorkey:
                 self.image = pygame.transform.rotate(self.__genimage__, self.__ro__)
                 try: 
-                    self.image = pygame.transform.scale(self.image,self.scale)
+                    self.image = pygame.transform.scale(self.image, self.scale)
                 except: pass
                 self.image.set_colorkey(self.colorkey)
             else:
                 self.image = pygame.transform.rotate(self.__genimage__, self.__ro__).convert_alpha()
                 try: 
-                    self.image = pygame.transform.scale(self.image,self.scale)
+                    self.image = pygame.transform.scale(self.image, self.scale)
                 except: pass
 
             self.rect = self.image.get_rect()
             self.rect.center = self.ce
     
-def calc_dir(angle, length):
+def calc_dir(
+    angle: float, 
+    length: float
+) -> Tuple[float, float]:
     '''
     通过角度和距离计算x和y分别增加多少
     参数：
     angle: 角度
     length: 距离
     返回：
-    (x,y)
+    (x, y)
     '''
     return (length * math.cos(math.radians(angle)), -length * math.sin(math.radians(angle)))
             
-def go(update:Callable[[],None]=lambda: None,
-       draw:Callable[[],None]=lambda: all_sprites.draw(screen),
-       getevent:Callable[[pygame.event.Event], None]=lambda event: None,
-       background:str='',
-       screensize:tuple[int,int]=(WIDTH,HEIGHT),
-       title:str=TITLE,
-       bgcolor:tuple[int,int,int]=(0,0,0),
-       fps:int=FPS):
+def go(
+    update: Callable[[], None] = lambda: None,
+    draw: Callable[[], None] = lambda: all_sprites.draw(screen),
+    getevent: Callable[[pygame.event.Event], None] = lambda event: None,
+    background: str = '',
+    screensize: Tuple[int, int] = (WIDTH, HEIGHT),
+    title: str = TITLE,
+    bgcolor: Tuple[int, int, int] = (0, 0, 0),
+    fps: int = FPS
+) -> None:
     '''
     运行游戏
     需放在一切的最后，进行最终的配置
@@ -140,8 +157,8 @@ def go(update:Callable[[],None]=lambda: None,
     pygame.display.set_caption(title)
     clock = pygame.time.Clock()
     try:
-        bgimg = pygame.image.load('images/'+background).convert()
-        background_img = pygame.transform.scale(bgimg,(screensize[0],screensize[1]))
+        bgimg = pygame.image.load('images/' + background).convert()
+        background_img = pygame.transform.scale(bgimg, (screensize[0], screensize[1]))
     except:
         pass
     running = True
@@ -151,22 +168,19 @@ def go(update:Callable[[],None]=lambda: None,
             getevent(event)
             if event.type == pygame.QUIT:
                 running = False
-        #更新
+        # 更新
         all_sprites.update()
         update()
 
-        #显示
+        # 显示
         screen.fill(bgcolor)
         try:
-            screen.blit(background_img,(0,0))
+            screen.blit(background_img, (0, 0))
         except: pass
         draw()
         pygame.display.update()
     pygame.quit()
 
-
-
-
 if __name__ == '__main__':
-    a = lambda *org:print('这不是直接运行用的！')
-    go(a,a,a)
+    a = lambda *org: print('这不是直接运行用的！')
+    go(a, a, a)
