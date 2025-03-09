@@ -3,6 +3,7 @@
 完美支持IDE自动补全
 导入后附带pygame的内容（直接使用`pygame.xxx`即可）
 建议使用from import *导入
+注：旋转角度定义：0度朝右，逆时针旋转
 '''
 import math
 from typing import Callable, Tuple, List, Dict
@@ -117,7 +118,7 @@ class Actor(pygame.sprite.Sprite):
             self.rect = self.image.get_rect()
             self.rect.center = self.ce
     
-def calc_dir(
+def dir2pos(
     angle: float, 
     length: float
 ) -> Tuple[float, float]:
@@ -130,6 +131,20 @@ def calc_dir(
     (x, y)
     '''
     return (length * math.cos(math.radians(angle)), -length * math.sin(math.radians(angle)))
+
+def reflect_angle(angle, wall_angle):
+    '''计算反射角'''
+    # 将角度转换为弧度
+    angle_rad = math.radians(angle)
+    wall_angle_rad = math.radians(wall_angle)
+
+    # 计算反射角
+    reflect_angle_rad = 2 * wall_angle_rad - angle_rad
+
+    # 将反射角转换为角度
+    reflect_angle = math.degrees(reflect_angle_rad)
+
+    return reflect_angle
             
 def go(
     update: Callable[[], None] = lambda: None,

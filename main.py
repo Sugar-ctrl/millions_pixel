@@ -29,6 +29,9 @@ colormap = [(0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]
 SCREENSIZE = (gamesize+50*6, gamesize)
 origin_area_l = 150
 
+addbullet = 1
+tickcnt = 0
+
 gamesurface = pygame.Surface((gamesize, gamesize))
 gamechanges = Queue() # tuple(x, y, width, height, color)
 
@@ -38,34 +41,53 @@ class Tower(Actor):
         self.rect.center = pos
         self.health = 100
         self.bullet = 0
+        self.coloridx = coloridx
     def update(self):
         super().update()
         self.rotate += 1
+        if self.bullet > 0:
+            Bullet(self.coloridx)
+            self.bullet -= 1
 
 class Bullet(Actor):
     def __init__(self, coloridx:int=1):
         super().__init__('bullet.png', (255, 255, 255))
         self.coloridx = coloridx
-        self.rect.center = towers[coloridx].rect.center
-        self.rotate = towers[coloridx].rotate
+        self.rect.center = towers[coloridx-1].rect.center
+        rotate = towers[coloridx-1].rotate
+        self.addx, self.addy = dir2pos(rotate, 10)
+        self.rect.width = self.rect.height = 1
     def update(self):
         super().update()
-        addx, addy = calc_dir(self.rotate, 1)
-        self.rect.centerx += addx
-        self.rect.centery += addy
-        if self.rect.right > 
-        else:
-            for tower in towers:
-                if self.rect.colliderect(tower.rect):
-                    if tower.coloridx == self.coloridx:
-                        tower.health += 1
-                    else:
-                        tower.health -= 1
+        global gamesize, blocks, gamechanges
+        self.rect.centerx += self.addx
+        self.rect.centery += self.addy
+        # 碰到边缘就反弹
+        if self.rect.left < 0 or self.rect.right > gamesize-1:
+            self.addx = -self.addx
+            self.rect.centerx += self.addx
+        if self.rect.top < 0 or self.rect.bottom > gamesize-1:
+            self.addy = -self.addy
+            self.rect.centery += self.addy
+        
+
+        for tower in towers:
+            if self.rect.colliderect(tower.rect):
+                if tower.coloridx != self.coloridx:
+                    tower.health -= 1
                     self.kill()
-                    break
+        
+        if blocks[self.rect.left, self.rect.top] != self.coloridx:
+            blocks[self.rect.left, self.rect.top] = self.coloridx
+            gamechanges.put((self.rect.left, self.rect.top, 1, 1, self.coloridx))
+            self.kill()
+        
+    
+    def draw(self, surface):
+        pygame.draw.rect(surface, colormap[self.coloridx], self.rect)
 
 def init():
-    global gamesurface, origin_area_l, towers
+    global gamesurface, origin_area_l, towers, addbullet
     gamesurface.fill((0, 0, 0))
     gamechanges.put((0, 0, origin_area_l, origin_area_l, 1))
     gamechanges.put((gamesize-1-origin_area_l, 0, origin_area_l, origin_area_l, 2))
@@ -77,11 +99,19 @@ def init():
         Tower(3, (origin_area_l//2, gamesize-1-origin_area_l//2)),
         Tower(4, (gamesize-1-origin_area_l//2, gamesize-1-origin_area_l//2))
     ]
+    for tower in towers:
+        tower.bullet = 100
 
 def update():
-    global gamechanges
+    global gamechanges, addbullet, tickcnt
     # for _ in range(1000):
     #     gamechanges.put((random.randint(0, gamesize-1), random.randint(0, gamesize-1), 1, 1, random.randint(1, 4)))
+    tickcnt += 1
+    if tickcnt % 6 == 0:
+        if random.random() < 0.1:
+            random.choice(towers).bullet += addbullet
+            addbullet = 1
+        addbullet *= 2
 
 # @timer
 def draw():
@@ -92,6 +122,9 @@ def draw():
         pygame.draw.rect(gamesurface, colormap[color], pygame.Rect(x, y, width, height))
     screen.blit(gamesurface, (0, 0))
     all_sprites.draw(screen)
+    for i in sprite_groups[Bullet].sprites():
+        i.draw(screen)
+
     for tower in towers:
         # pygame.draw.rect(screen, (255, 255, 255), tower.rect, 5)
         draw_text(f'子弹：{tower.bullet}', tower.rect.centerx, tower.rect.centery+30, 18, (0,0,0))
