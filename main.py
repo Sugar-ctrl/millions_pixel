@@ -36,58 +36,79 @@ gamesurface = pygame.Surface((gamesize, gamesize))
 gamechanges = Queue() # tuple(x, y, width, height, color)
 
 class Tower(Actor):
-    def __init__(self, coloridx:int=1, pos:tuple[int, int]=(49, 49)):
+    def __init__(self, coloridx:int=1, pos:Tuple[int, int]=(49, 49)):
         super().__init__('tower.png', (255, 255, 255))
         self.rect.center = pos
         self.health = 100
         self.bullet = 0
         self.coloridx = coloridx
     def update(self):
+        global Bullet
         super().update()
         self.rotate += 1
-        if self.bullet > 0:
-            Bullet(self.coloridx)
-            self.bullet -= 1
+        bulletcnt = len(busy_bullet)
+        for i in range(5):
+            if self.bullet > 0 and random.random() > (bulletcnt-500)/500:
+                make_bullet(self.coloridx)
+                self.bullet -= 1
 
 class Bullet(Actor):
-    def __init__(self, coloridx:int=1):
+    def __init__(self):
+        global towers
         super().__init__('bullet.png', (255, 255, 255))
-        self.coloridx = coloridx
-        self.rect.center = towers[coloridx-1].rect.center
-        rotate = towers[coloridx-1].rotate
-        self.addx, self.addy = dir2pos(rotate, 10)
         self.rect.width = self.rect.height = 1
+        self.step = 3
+        # 以下的数值其实用不上
+        self.truex, self.truey = self.rect.center = self.addx, self.addy = (0,0)
+        self.coloridx = 1
     def update(self):
         super().update()
         global gamesize, blocks, gamechanges
-        self.rect.centerx += self.addx
-        self.rect.centery += self.addy
-        # 碰到边缘就反弹
-        if self.rect.left < 0 or self.rect.right > gamesize-1:
-            self.addx = -self.addx
-            self.rect.centerx += self.addx
-        if self.rect.top < 0 or self.rect.bottom > gamesize-1:
-            self.addy = -self.addy
-            self.rect.centery += self.addy
-        
+        for i in range(self.step):
+            self.truex += self.addx
+            self.truey += self.addy
+            self.rect.centerx, self.rect.centery = self.truex, self.truey
+            # 碰到边缘就反弹
+            if self.rect.left < 0 or self.rect.right > gamesize-1:
+                self.addx = -self.addx
+                self.truex += self.addx
+            if self.rect.top < 0 or self.rect.bottom > gamesize-1:
+                self.addy = -self.addy
+                self.truey += self.addy
+            self.rect.centerx, self.rect.centery = self.truex, self.truey
 
-        for tower in towers:
-            if self.rect.colliderect(tower.rect):
-                if tower.coloridx != self.coloridx:
-                    tower.health -= 1
-                    self.kill()
+            for tower in towers:
+                if self.rect.colliderect(tower.rect):
+                    if tower.coloridx != self.coloridx:
+                        tower.health -= 1
+                        self.free()
+            
+            for i in range(-1,2):
+                for j in range(-1,2):
+                    if blocks[self.rect.left+i, self.rect.top+j] != self.coloridx:
+                        blocks[self.rect.left+i, self.rect.top+j] = self.coloridx
+                        gamechanges.put((self.rect.left+i, self.rect.top+j, 1, 1, self.coloridx))
+                        self.free()
+
+    def free(self):
+        self.remove(busy_bullet)
+        self.add(free_bullet)
         
-        if blocks[self.rect.left, self.rect.top] != self.coloridx:
-            blocks[self.rect.left, self.rect.top] = self.coloridx
-            gamechanges.put((self.rect.left, self.rect.top, 1, 1, self.coloridx))
-            self.kill()
-        
-    
     def draw(self, surface):
-        pygame.draw.rect(surface, colormap[self.coloridx], self.rect)
+        pygame.draw.rect(surface, (255,255,255), self.rect)
+
+def make_bullet(coloridx:int=1):
+    global free_bullet, busy_bullet
+    bullet = free_bullet.sprites()[0]
+    bullet.coloridx = coloridx
+    bullet.rect.center = towers[coloridx-1].rect.center
+    bullet.addx, bullet.addy = dir2pos(towers[coloridx-1].rotate, 1)
+    bullet.truex, bullet.truey = bullet.rect.center
+    bullet.add(busy_bullet)
+    bullet.remove(free_bullet)
 
 def init():
-    global gamesurface, origin_area_l, towers, addbullet
+    global gamesurface, origin_area_l, towers, addbullet, free_bullet, busy_bullet
     gamesurface.fill((0, 0, 0))
     gamechanges.put((0, 0, origin_area_l, origin_area_l, 1))
     gamechanges.put((gamesize-1-origin_area_l, 0, origin_area_l, origin_area_l, 2))
@@ -101,9 +122,16 @@ def init():
     ]
     for tower in towers:
         tower.bullet = 100
+    
+    free_bullet = pygame.sprite.Group()
+    for i in range(1000):
+        free_bullet.add(Bullet())
+    busy_bullet = pygame.sprite.Group()
 
 def update():
-    global gamechanges, addbullet, tickcnt
+    global gamechanges, addbullet, tickcnt, busy_bullet
+    sprite_groups[Tower].update()
+    busy_bullet.update()
     # for _ in range(1000):
     #     gamechanges.put((random.randint(0, gamesize-1), random.randint(0, gamesize-1), 1, 1, random.randint(1, 4)))
     tickcnt += 1
@@ -121,14 +149,20 @@ def draw():
         blocks[x:x+width-1, y:y+height-1] = color
         pygame.draw.rect(gamesurface, colormap[color], pygame.Rect(x, y, width, height))
     screen.blit(gamesurface, (0, 0))
-    all_sprites.draw(screen)
-    for i in sprite_groups[Bullet].sprites():
+    sprite_groups[Tower].draw(screen)
+    for i in busy_bullet.sprites():
         i.draw(screen)
 
     for tower in towers:
         # pygame.draw.rect(screen, (255, 255, 255), tower.rect, 5)
         draw_text(f'子弹：{tower.bullet}', tower.rect.centerx, tower.rect.centery+30, 18, (0,0,0))
         draw_text(f'防御：{tower.health}', tower.rect.centerx, tower.rect.centery-30, 18, (0,0,0))
+
+    # logger
+    global starttime
+    print(f'{len(busy_bullet.sprites())},{1/(time.time()-starttime)}')
+    starttime = time.time()
     
 init()
+starttime = time.time()
 go(draw=draw, update=update, screensize=SCREENSIZE)

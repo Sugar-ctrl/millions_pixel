@@ -42,7 +42,7 @@ def draw_text(
     try:
         font = pygame.font.Font(fontname, size)
     except:
-        font = pygame.font.Font(f'{os.path.abspath(__file__)}/../MSYH.TTC')
+        font = pygame.font.Font(f'{os.path.abspath(__file__)}/../MSYH.TTC',size)
     text_surface = font.render(text, True, color)
     text_rect = text_surface.get_rect()
     text_rect.centerx = x
@@ -147,7 +147,7 @@ def reflect_angle(angle, wall_angle):
     return reflect_angle
             
 def go(
-    update: Callable[[], None] = lambda: None,
+    update: Callable[[], None] = lambda: all_sprites.update(),
     draw: Callable[[], None] = lambda: all_sprites.draw(screen),
     getevent: Callable[[pygame.event.Event], None] = lambda event: None,
     background: str = '',
@@ -184,7 +184,6 @@ def go(
             if event.type == pygame.QUIT:
                 running = False
         # 更新
-        all_sprites.update()
         update()
 
         # 显示
