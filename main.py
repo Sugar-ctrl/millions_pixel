@@ -35,6 +35,10 @@ tickcnt = 0
 gamesurface = pygame.Surface((gamesize, gamesize))
 gamechanges = Queue() # tuple(x, y, width, height, color)
 
+randsurface = pygame.Surface((50*6, gamesize))
+
+holepos = 0
+
 class Tower(Actor):
     def __init__(self, coloridx:int=1, pos:Tuple[int, int]=(49, 49)):
         super().__init__('tower.png', (255, 255, 255))
@@ -55,7 +59,7 @@ class Tower(Actor):
 class Bullet(Actor):
     def __init__(self):
         global towers
-        super().__init__('bullet.png', (255, 255, 255))
+        super().__init__('empty.png', (255, 255, 255))
         self.rect.width = self.rect.height = 1
         self.step = 3
         # 以下的数值其实用不上
@@ -97,6 +101,15 @@ class Bullet(Actor):
     def draw(self, surface):
         pygame.draw.rect(surface, (255,255,255), self.rect)
 
+class mkrand(Actor):
+    def __init__(self, coloridx:int=1):
+        super().__init__('empty.png')
+        self.rect.width = self.rect.height = 1
+        self.coloridx = coloridx
+    def update(self):
+        super().update()
+        global towers, holepos
+
 def make_bullet(coloridx:int=1):
     global free_bullet, busy_bullet
     bullet = free_bullet.sprites()[0]
@@ -128,8 +141,11 @@ def init():
         free_bullet.add(Bullet())
     busy_bullet = pygame.sprite.Group()
 
+    for i in range(6):
+        pygame.draw.aaline(randsurface, (255, 255, 255), (i*50, gamesize/3*2), (i*50, gamesize/3*2+100))
+
 def update():
-    global gamechanges, addbullet, tickcnt, busy_bullet
+    global gamechanges, addbullet, tickcnt, busy_bullet, holepos
     sprite_groups[Tower].update()
     busy_bullet.update()
     # for _ in range(1000):
@@ -140,15 +156,22 @@ def update():
             random.choice(towers).bullet += addbullet
             addbullet = 1
         addbullet *= 2
+    
+    if tickcnt % 30 == 0:
+        holepos += 1
+        if holepos > 5:
+            holepos = 0
 
 # @timer
 def draw():
-    global blocks, colormap, gamechanges, gamesurface, towers
+    global blocks, colormap, gamechanges, gamesurface, towers, starttime
     while not gamechanges.empty():
         x, y, width, height, color = gamechanges.get()
         blocks[x:x+width-1, y:y+height-1] = color
         pygame.draw.rect(gamesurface, colormap[color], pygame.Rect(x, y, width, height))
     screen.blit(gamesurface, (0, 0))
+    screen.blit(randsurface, (gamesize, 0))
+    pygame.draw.aaline(screen, (255, 255, 255), (gamesize, 0), (gamesize, gamesize))
     sprite_groups[Tower].draw(screen)
     for i in busy_bullet.sprites():
         i.draw(screen)
@@ -158,8 +181,12 @@ def draw():
         draw_text(f'子弹：{tower.bullet}', tower.rect.centerx, tower.rect.centery+30, 18, (0,0,0))
         draw_text(f'防御：{tower.health}', tower.rect.centerx, tower.rect.centery-30, 18, (0,0,0))
 
+    pygame.draw.circle(screen, (255, 255, 255), (gamesize+holepos*50+25, gamesize/3*2+50), 10)
+
+    real_fps = 1/(time.time()-starttime)
+    pygame.display.set_caption(f'fps: {1/(time.time()-starttime):.1f}')
+
     # logger
-    global starttime
     print(f'{len(busy_bullet.sprites())},{1/(time.time()-starttime)}')
     starttime = time.time()
     
