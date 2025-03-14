@@ -96,6 +96,17 @@ class Bullet(Actor):
                         gamechanges.put((self.rect.left+i, self.rect.top+j, 1, 1, self.coloridx))
                         self.free()
 
+            for i in pygame.sprite.spritecollide(self, sprite_groups.get(Square, pygame.sprite.Group()), False):
+                if i.coloridx == self.coloridx:
+                    i.num += 1
+                    self.free()
+                else:
+                    i.num -= 1
+                    if i.num <= 0:
+                        i.kill()
+                    self.free()
+
+
     def free(self):
         self.remove(busy_bullet)
         self.add(free_bullet)
@@ -111,14 +122,52 @@ class Square(Actor):
         self.coloridx = coloridx
         self.num = num
         self.addx, self.addy = dir2pos(towers[coloridx-1].rotate, 5)
+        # logger
+        print(f'{self.coloridx} {self.num} {self.addx} {self.addy}--------------------------------------')
     def update(self):
         super().update()
         self.rect.width = self.rect.height = log2(sqrt(self.num))*10+10
         self.rect.centerx += self.addx
         self.rect.centery += self.addy
+        if self.rect.left < 0:
+            self.rect.left = 0
+            self.addx = -self.addx
+        if self.rect.right > gamesize-1:
+            self.rect.right = gamesize-1
+            self.addx = -self.addx
+        if self.rect.top < 0:
+            self.rect.top = 0
+            self.addy = -self.addy
+        if self.rect.bottom > gamesize-1:
+            self.rect.bottom = gamesize-1
+            self.addy = -self.addy
+        
+        for i in pygame.sprite.spritecollide(self, sprite_groups[Tower], False):
+            if i.coloridx != self.coloridx:
+                # logger
+                print(f'mk dmg {self.coloridx} {self.num} {i.coloridx} {i.health}')
+                damage = random.randint(self.num//2, self.num)
+                i.health -= damage
+                self.num -= damage
+                if abs(self.rect.x-i.rect.x) > abs(self.rect.y-i.rect.y):
+                    self.addx = -self.addx
+                else:
+                    self.addy = -self.addy
+
+        mask = blocks[self.rect.left:self.rect.right, self.rect.top:self.rect.bottom] != self.coloridx
+        gamechanges.put((self.rect.left, self.rect.top, self.rect.width, self.rect.height, self.coloridx))
+        self.num -= mask.sum()
+        # logger
+        print(f'-{mask.sum()}')
+
+        if self.num <= 0:
+            self.kill()
+
+
     def draw(self, surface):
         pygame.draw.rect(surface, colormap[self.coloridx], self.rect)
         pygame.draw.rect(surface, (255,255,255), self.rect, 1)
+        draw_text(str(self.num), self.rect.centerx, self.rect.centery, 20, surface=surface)
 
 class Mkrand(Actor):
     def __init__(self, coloridx:int=1):
@@ -139,21 +188,24 @@ class Mkrand(Actor):
         if self.rect.colliderect(pygame.Rect(0, gamesize/3*2+100, 300, 25)):
             holeidx = (self.rect.centerx-25) // 50 
             if holeidx == 0:
-                self.num *= 1.5
+                self.num *= 15
                 self.num = int(self.num)
             if holeidx == 1:
                 self.num *= 2
             if holeidx == 2:
                 self.num *= 3
-            if holeidx == 3 and self.num >= 100:
-                towers[self.coloridx-1].health += self.num
-                self.num = 1
-            if holeidx == 4 and self.num >= 100:
-                towers[self.coloridx-1].bullet += self.num
-                self.num = 1
-            if holeidx == 5 and self.num >= 100:
-                self.num = 1
-                pass # 以后再做
+            if self.num > 100:
+                if holeidx == 3:
+                    towers[self.coloridx-1].health += self.num
+                    self.num = 1
+                if holeidx == 4:
+                    towers[self.coloridx-1].bullet += self.num
+                    self.num = 1
+                if holeidx == 5:
+                    Square(self.coloridx, self.num)
+                    self.num = 1
+            else:
+                self.num *= 2
 
             self.rect.centery = random.randint(0, 100)
             self.rect.centerx = self.coloridx*50+25
@@ -231,14 +283,6 @@ def update():
         holepos += 1
         if holepos > 5:
             holepos = 0
-            
-    # dbg
-    if tickcnt % 50 == 0:
-        Square(1, 50)
-        Square(2, 100)
-        Square(3, 150)
-        Square(4, 200)
-        Square(1, 100000)
 
 # @timer
 def draw():
@@ -272,7 +316,7 @@ def draw():
     pygame.display.set_caption(f'fps: {1/(time.time()-starttime):.1f}')
 
     # logger
-    print(f'{len(busy_bullet.sprites())},{1/(time.time()-starttime)}')
+    print(f'{len(busy_bullet.sprites())},{1/(time.time()-starttime)},{len(sprite_groups.get(Square, []))}')
     starttime = time.time()
     
 init()
