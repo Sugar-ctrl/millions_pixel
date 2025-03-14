@@ -27,7 +27,9 @@ def draw_text(
     y: int, 
     size: int = 18, 
     color: Tuple[int, int, int] = (0, 0, 0), 
-    fontname: str = ''
+    fontname: str = '',
+    bgcolor: Tuple[int, int, int] = None,
+    surface: pygame.Surface = screen
 ) -> None:
     '''
     绘制文字
@@ -43,11 +45,11 @@ def draw_text(
         font = pygame.font.Font(fontname, size)
     except:
         font = pygame.font.Font(f'{os.path.abspath(__file__)}/../MSYH.TTC',size)
-    text_surface = font.render(text, True, color)
+    text_surface = font.render(text, True, color, bgcolor)
     text_rect = text_surface.get_rect()
     text_rect.centerx = x
     text_rect.centery = y
-    screen.blit(text_surface, text_rect)
+    surface.blit(text_surface, text_rect)
 
 class Actor(pygame.sprite.Sprite):
     '''

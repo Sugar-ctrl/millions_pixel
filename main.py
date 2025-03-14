@@ -9,6 +9,7 @@ UI：
 大方块：碰到己方像素无反应，碰到其他像素则扣血并转为己方像素；碰到己方小球加血，碰到敌方小球扣血
 家：碰到敌方大方块则随机将双方扣血，碰到敌方子弹则扣一滴血
 '''
+from math import *
 import random
 from pgz.my_pgzero import *
 import numpy as np
@@ -38,6 +39,7 @@ gamechanges = Queue() # tuple(x, y, width, height, color)
 randsurface = pygame.Surface((50*6, gamesize))
 
 holepos = 0
+real_fps = 0
 
 class Tower(Actor):
     def __init__(self, coloridx:int=1, pos:Tuple[int, int]=(49, 49)):
@@ -47,12 +49,12 @@ class Tower(Actor):
         self.bullet = 0
         self.coloridx = coloridx
     def update(self):
-        global Bullet
+        global Bullet, real_fps
         super().update()
         self.rotate += 1
         bulletcnt = len(busy_bullet)
-        for i in range(5):
-            if self.bullet > 0 and random.random() > (bulletcnt-500)/500:
+        for i in range(10):
+            if self.bullet > 0 and random.random() > (bulletcnt-500)/500 and random.random() > (30-real_fps)/20: # 根据场上子弹数与当前帧数限制发射
                 make_bullet(self.coloridx)
                 self.bullet -= 1
 
@@ -101,14 +103,66 @@ class Bullet(Actor):
     def draw(self, surface):
         pygame.draw.rect(surface, (255,255,255), self.rect)
 
-class mkrand(Actor):
+class Square(Actor):
+    def __init__(self, coloridx:int=1, num:int=1):
+        super().__init__('empty.png', (255, 255, 255))
+        global towers
+        self.rect.center = towers[coloridx-1].rect.center
+        self.coloridx = coloridx
+        self.num = num
+        self.addx, self.addy = dir2pos(towers[coloridx-1].rotate, 5)
+    def update(self):
+        super().update()
+        self.rect.width = self.rect.height = log2(sqrt(self.num))*10+10
+        self.rect.centerx += self.addx
+        self.rect.centery += self.addy
+    def draw(self, surface):
+        pygame.draw.rect(surface, colormap[self.coloridx], self.rect)
+        pygame.draw.rect(surface, (255,255,255), self.rect, 1)
+
+class Mkrand(Actor):
     def __init__(self, coloridx:int=1):
         super().__init__('empty.png')
         self.rect.width = self.rect.height = 1
         self.coloridx = coloridx
+        self.num = 1
+        self.rect.centerx = self.coloridx*50+25
+        self.rect.centery = 50
+    
     def update(self):
         super().update()
-        global towers, holepos
+        global towers, holepos, gamesize
+
+        if self.rect.colliderect(pygame.Rect(0, gamesize/3*2-25, 300, 25)):
+            self.rect.centery = gamesize/3*2+50
+            self.rect.centerx = holepos*50+25
+        if self.rect.colliderect(pygame.Rect(0, gamesize/3*2+100, 300, 25)):
+            holeidx = (self.rect.centerx-25) // 50 
+            if holeidx == 0:
+                self.num *= 1.5
+                self.num = int(self.num)
+            if holeidx == 1:
+                self.num *= 2
+            if holeidx == 2:
+                self.num *= 3
+            if holeidx == 3 and self.num >= 100:
+                towers[self.coloridx-1].health += self.num
+                self.num = 1
+            if holeidx == 4 and self.num >= 100:
+                towers[self.coloridx-1].bullet += self.num
+                self.num = 1
+            if holeidx == 5 and self.num >= 100:
+                self.num = 1
+                pass # 以后再做
+
+            self.rect.centery = random.randint(0, 100)
+            self.rect.centerx = self.coloridx*50+25
+        self.rect.y += random.randint(10, 15)
+    
+    def draw(self, surface):
+        pygame.draw.circle(surface, colormap[self.coloridx], (self.rect.centerx+gamesize, self.rect.centery), 10)
+        draw_text(str(self.num), self.rect.centerx+gamesize, self.rect.centery-20, 20, (255, 255, 255), surface=surface)
+
 
 def make_bullet(coloridx:int=1):
     global free_bullet, busy_bullet
@@ -135,6 +189,10 @@ def init():
     ]
     for tower in towers:
         tower.bullet = 100
+
+    for j in range(5):
+        for i in range(1,5):
+            Mkrand(i)
     
     free_bullet = pygame.sprite.Group()
     for i in range(1000):
@@ -143,38 +201,65 @@ def init():
 
     for i in range(6):
         pygame.draw.aaline(randsurface, (255, 255, 255), (i*50, gamesize/3*2), (i*50, gamesize/3*2+100))
+    draw_text('*1.5', 25, gamesize/3*2+25, 20, (255, 255, 255), surface=randsurface)
+    draw_text('*2', 75, gamesize/3*2+25, 20, (255, 255, 255), surface=randsurface)
+    draw_text('*3', 125, gamesize/3*2+25, 20, (255, 255, 255), surface=randsurface)
+    draw_text('加血', 175, gamesize/3*2+25, 20, (255, 255, 255), surface=randsurface)
+    draw_text('子弹', 225, gamesize/3*2+25, 20, (255, 255, 255), surface=randsurface)
+    draw_text('方块', 275, gamesize/3*2+25, 20, (255, 255, 255), surface=randsurface)
+    pygame.draw.rect(randsurface, (0, 0, 255), pygame.Rect(0, gamesize/3*2-25, 300, 25))
+    pygame.draw.rect(randsurface, (0, 255, 0), pygame.Rect(0, gamesize/3*2+100, 300, 25))
 
 def update():
     global gamechanges, addbullet, tickcnt, busy_bullet, holepos
     sprite_groups[Tower].update()
     busy_bullet.update()
+    sprite_groups[Mkrand].update()
+    try:
+        sprite_groups[Square].update()
+    except KeyError: pass
     # for _ in range(1000):
     #     gamechanges.put((random.randint(0, gamesize-1), random.randint(0, gamesize-1), 1, 1, random.randint(1, 4)))
     tickcnt += 1
-    if tickcnt % 6 == 0:
-        if random.random() < 0.1:
-            random.choice(towers).bullet += addbullet
-            addbullet = 1
-        addbullet *= 2
+    # if tickcnt % 6 == 0:
+    #     if random.random() < 0.1:
+    #         random.choice(towers).bullet += addbullet
+    #         addbullet = 1
+    #     addbullet *= 2
     
-    if tickcnt % 30 == 0:
+    if tickcnt % 1 == 0:
         holepos += 1
         if holepos > 5:
             holepos = 0
+            
+    # dbg
+    if tickcnt % 50 == 0:
+        Square(1, 50)
+        Square(2, 100)
+        Square(3, 150)
+        Square(4, 200)
+        Square(1, 100000)
 
 # @timer
 def draw():
-    global blocks, colormap, gamechanges, gamesurface, towers, starttime
+    global blocks, colormap, gamechanges, gamesurface, towers, starttime, real_fps
     while not gamechanges.empty():
         x, y, width, height, color = gamechanges.get()
         blocks[x:x+width-1, y:y+height-1] = color
         pygame.draw.rect(gamesurface, colormap[color], pygame.Rect(x, y, width, height))
     screen.blit(gamesurface, (0, 0))
     screen.blit(randsurface, (gamesize, 0))
-    pygame.draw.aaline(screen, (255, 255, 255), (gamesize, 0), (gamesize, gamesize))
     sprite_groups[Tower].draw(screen)
     for i in busy_bullet.sprites():
         i.draw(screen)
+
+    for i in sprite_groups[Mkrand].sprites():
+        i.draw(screen)
+    
+    try:
+        for i in sprite_groups[Square].sprites():
+            i.draw(screen)
+    except KeyError: pass
 
     for tower in towers:
         # pygame.draw.rect(screen, (255, 255, 255), tower.rect, 5)
