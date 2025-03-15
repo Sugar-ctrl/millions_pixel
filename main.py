@@ -57,6 +57,9 @@ class Tower(Actor):
             if self.bullet > 0 and random.random() > (bulletcnt-500)/500 and random.random() > (30-real_fps)/20: # 根据场上子弹数与当前帧数限制发射
                 make_bullet(self.coloridx)
                 self.bullet -= 1
+        
+        if self.health <= 0:
+            self.kill()
 
 class Bullet(Actor):
     def __init__(self):
@@ -92,7 +95,6 @@ class Bullet(Actor):
             for i in range(-1,2):
                 for j in range(-1,2):
                     if blocks[self.rect.left+i, self.rect.top+j] != self.coloridx:
-                        blocks[self.rect.left+i, self.rect.top+j] = self.coloridx
                         gamechanges.put((self.rect.left+i, self.rect.top+j, 1, 1, self.coloridx))
                         self.free()
 
@@ -122,11 +124,17 @@ class Square(Actor):
         self.coloridx = coloridx
         self.num = num
         self.addx, self.addy = dir2pos(towers[coloridx-1].rotate, 5)
+        self.colliding = set()
         # logger
         print(f'{self.coloridx} {self.num} {self.addx} {self.addy}--------------------------------------')
     def update(self):
         super().update()
-        self.rect.width = self.rect.height = log2(sqrt(self.num))*10+10
+        if self.num <= 0:
+            self.kill()
+        try:
+            self.rect.width = self.rect.height = log2(sqrt(self.num))*10+10
+        except ValueError as e:
+            print(self.num, e)
         self.rect.centerx += self.addx
         self.rect.centery += self.addy
         if self.rect.left < 0:
@@ -146,6 +154,9 @@ class Square(Actor):
             if i.coloridx != self.coloridx:
                 # logger
                 print(f'mk dmg {self.coloridx} {self.num} {i.coloridx} {i.health}')
+                if self.num <= 0:
+                    self.kill()
+                    break
                 damage = random.randint(self.num//2, self.num)
                 i.health -= damage
                 self.num -= damage
@@ -160,9 +171,23 @@ class Square(Actor):
         # logger
         print(f'-{mask.sum()}')
 
-        if self.num <= 0:
-            self.kill()
-
+        collided = self.colliding.copy()
+        self.colliding.clear()
+        for i in pygame.sprite.spritecollide(self, sprite_groups[Square], False):
+            if i is self: continue
+            self.colliding.add(i)
+            if i in collided: continue
+            if abs(self.rect.x-i.rect.x) > abs(self.rect.y-i.rect.y):
+                self.addx = -self.addx
+            else:
+                self.addy = -self.addy
+            if i.coloridx != self.coloridx:
+                if self.num <= 0:
+                    self.kill()
+                    break
+                damage = random.randint(self.num//2, self.num)
+                i.num -= damage
+                self.num -= damage
 
     def draw(self, surface):
         pygame.draw.rect(surface, colormap[self.coloridx], self.rect)
@@ -188,7 +213,7 @@ class Mkrand(Actor):
         if self.rect.colliderect(pygame.Rect(0, gamesize/3*2+100, 300, 25)):
             holeidx = (self.rect.centerx-25) // 50 
             if holeidx == 0:
-                self.num *= 15
+                self.num *= 1.5
                 self.num = int(self.num)
             if holeidx == 1:
                 self.num *= 2
@@ -205,11 +230,14 @@ class Mkrand(Actor):
                     Square(self.coloridx, self.num)
                     self.num = 1
             else:
-                self.num *= 2
+                self.num *= random.randint(2,10)
 
             self.rect.centery = random.randint(0, 100)
             self.rect.centerx = self.coloridx*50+25
         self.rect.y += random.randint(10, 15)
+
+        if towers[self.coloridx-1].health <= 0:
+            self.kill()
     
     def draw(self, surface):
         pygame.draw.circle(surface, colormap[self.coloridx], (self.rect.centerx+gamesize, self.rect.centery), 10)
