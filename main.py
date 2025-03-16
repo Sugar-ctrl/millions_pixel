@@ -40,6 +40,7 @@ randsurface = pygame.Surface((50*6, gamesize))
 
 holepos = 0
 real_fps = 0
+into15 = False
 
 class Tower(Actor):
     def __init__(self, coloridx:int=1, pos:Tuple[int, int]=(49, 49)):
@@ -70,9 +71,11 @@ class Bullet(Actor):
         # 以下的数值其实用不上
         self.truex, self.truey = self.rect.center = self.addx, self.addy = (0,0)
         self.coloridx = 1
+        # logger
+        self.duang = 999999999 # 如果碰撞过墙壁，则记录其死因与用时
     def update(self):
         super().update()
-        global gamesize, blocks, gamechanges
+        global gamesize, blocks, gamechanges, tickcnt
         for i in range(self.step):
             self.truex += self.addx
             self.truey += self.addy
@@ -81,9 +84,15 @@ class Bullet(Actor):
             if self.rect.left < 0 or self.rect.right > gamesize-1:
                 self.addx = -self.addx
                 self.truex += self.addx
+                # logger
+                if self.duang == 999999999:
+                    self.duang = tickcnt
             if self.rect.top < 0 or self.rect.bottom > gamesize-1:
                 self.addy = -self.addy
                 self.truey += self.addy
+                # logger
+                if self.duang == 999999999:
+                    self.duang = tickcnt
             self.rect.centerx, self.rect.centery = self.truex, self.truey
 
             for tower in towers:
@@ -92,10 +101,13 @@ class Bullet(Actor):
                         tower.health -= 1
                         self.free()
             
-            for i in range(-1,2):
-                for j in range(-1,2):
-                    if blocks[self.rect.left+i, self.rect.top+j] != self.coloridx:
+            for i in range(-1,1):
+                for j in range(-1,1):
+                    if blocks[self.rect.left+i, self.rect.top+j] != self.coloridx and self.rect.left+i >= 0 and self.rect.right+i < gamesize-1 and self.rect.top+j >= 0 and self.rect.bottom+j < gamesize-1:
                         gamechanges.put((self.rect.left+i, self.rect.top+j, 1, 1, self.coloridx))
+                        # logger
+                        if self.duang == tickcnt:
+                            print(f'{self.coloridx}颜色子弹因碰撞{blocks[self.rect.left+i, self.rect.top+j]}颜色方块（坐标：{self.truex, self.truey, self.rect.center}）而死亡，用时{tickcnt-self.duang}帧')
                         self.free()
 
             for i in pygame.sprite.spritecollide(self, sprite_groups.get(Square, pygame.sprite.Group()), False):
@@ -125,8 +137,6 @@ class Square(Actor):
         self.num = num
         self.addx, self.addy = dir2pos(towers[coloridx-1].rotate, 5)
         self.colliding = set()
-        # logger
-        print(f'{self.coloridx} {self.num} {self.addx} {self.addy}--------------------------------------')
     def update(self):
         super().update()
         if self.num <= 0:
@@ -152,8 +162,6 @@ class Square(Actor):
         
         for i in pygame.sprite.spritecollide(self, sprite_groups[Tower], False):
             if i.coloridx != self.coloridx:
-                # logger
-                print(f'mk dmg {self.coloridx} {self.num} {i.coloridx} {i.health}')
                 if self.num <= 0:
                     self.kill()
                     break
@@ -168,8 +176,6 @@ class Square(Actor):
         mask = blocks[self.rect.left:self.rect.right, self.rect.top:self.rect.bottom] != self.coloridx
         gamechanges.put((self.rect.left, self.rect.top, self.rect.width, self.rect.height, self.coloridx))
         self.num -= mask.sum()
-        # logger
-        print(f'-{mask.sum()}')
 
         collided = self.colliding.copy()
         self.colliding.clear()
@@ -213,7 +219,7 @@ class Mkrand(Actor):
         if self.rect.colliderect(pygame.Rect(0, gamesize/3*2+100, 300, 25)):
             holeidx = (self.rect.centerx-25) // 50 
             if holeidx == 0:
-                self.num *= 1.5
+                self.num *= 1.5 + (13.5*into15)
                 self.num = int(self.num)
             if holeidx == 1:
                 self.num *= 2
@@ -223,9 +229,15 @@ class Mkrand(Actor):
                 if holeidx == 3:
                     towers[self.coloridx-1].health += self.num
                     self.num = 1
+                    if towers[self.coloridx-1].health > 10000000:
+                        self.num = towers[self.coloridx-1].health-10000000
+                        towers[self.coloridx-1].health = 10000000
                 if holeidx == 4:
                     towers[self.coloridx-1].bullet += self.num
                     self.num = 1
+                    if towers[self.coloridx-1].bullet > 10000000:
+                        self.num = towers[self.coloridx-1].bullet-10000000
+                        towers[self.coloridx-1].bullet = 10000000
                 if holeidx == 5:
                     Square(self.coloridx, self.num)
                     self.num = 1
@@ -250,6 +262,8 @@ def make_bullet(coloridx:int=1):
     bullet.coloridx = coloridx
     bullet.rect.center = towers[coloridx-1].rect.center
     bullet.addx, bullet.addy = dir2pos(towers[coloridx-1].rotate, 1)
+    bullet.addx += random.uniform(-0.1, 0.1)
+    bullet.addy += random.uniform(-0.1, 0.1)
     bullet.truex, bullet.truey = bullet.rect.center
     bullet.add(busy_bullet)
     bullet.remove(free_bullet)
@@ -291,7 +305,7 @@ def init():
     pygame.draw.rect(randsurface, (0, 255, 0), pygame.Rect(0, gamesize/3*2+100, 300, 25))
 
 def update():
-    global gamechanges, addbullet, tickcnt, busy_bullet, holepos
+    global gamechanges, addbullet, tickcnt, busy_bullet, holepos, into15
     sprite_groups[Tower].update()
     busy_bullet.update()
     sprite_groups[Mkrand].update()
@@ -311,6 +325,10 @@ def update():
         holepos += 1
         if holepos > 5:
             holepos = 0
+
+    if tickcnt == 1*60*20:
+        pygame.draw.rect(randsurface, (0,0,0), pygame.Rect(26, 362, 5, 10))
+        into15 = True
 
 # @timer
 def draw():
@@ -341,12 +359,16 @@ def draw():
     pygame.draw.circle(screen, (255, 255, 255), (gamesize+holepos*50+25, gamesize/3*2+50), 10)
 
     real_fps = 1/(time.time()-starttime)
-    pygame.display.set_caption(f'fps: {1/(time.time()-starttime):.1f}')
+    pygame.display.set_caption(f'fps: {1/(time.time()-starttime):.1f}{' - 乱斗模式已开启'*into15}')
 
     # logger
-    print(f'{len(busy_bullet.sprites())},{1/(time.time()-starttime)},{len(sprite_groups.get(Square, []))}')
+    print(f'{len(busy_bullet.sprites())},{real_fps},{len(sprite_groups.get(Square, []))}')
     starttime = time.time()
+
+def getevent(event:pygame.event.Event):
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        print(event.pos)
     
 init()
 starttime = time.time()
-go(draw=draw, update=update, screensize=SCREENSIZE)
+go(draw=draw, update=update, screensize=SCREENSIZE, getevent=getevent)
