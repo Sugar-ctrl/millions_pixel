@@ -104,7 +104,7 @@ class Bullet(Actor):
             for i in range(-1,1):
                 for j in range(-1,1):
                     if blocks[self.rect.left+i, self.rect.top+j] != self.coloridx and self.rect.left+i >= 0 and self.rect.right+i < gamesize-1 and self.rect.top+j >= 0 and self.rect.bottom+j < gamesize-1:
-                        gamechanges.put((self.rect.left+i, self.rect.top+j, 1, 1, self.coloridx))
+                        gamechanges.put((self.rect.left+i-1, self.rect.top+j-1, 3, 3, self.coloridx))
                         # logger
                         if self.duang == tickcnt:
                             print(f'{self.coloridx}颜色子弹因碰撞{blocks[self.rect.left+i, self.rect.top+j]}颜色方块（坐标：{self.truex, self.truey, self.rect.center}）而死亡，用时{tickcnt-self.duang}帧')
