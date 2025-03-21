@@ -1,0 +1,55 @@
+{
+    "metadata": {
+      "title": "Space Quest",
+      "artist": "Retro Composer",
+      "bpm": 140,
+      "time_signature": "4/4",
+      "duration": 1.5
+    },
+    "instruments": {
+      "pulse1": {
+        "waveform": "white_noise",
+        "duty_cycle": 0.25,
+        "volume": 0.8,
+        "effects": ["vibrato", "slide"]
+      },
+      "pulse2": {
+        "waveform": "square",
+        "duty_cycle": 0.5,
+        "volume": 0.6,
+        "effects": ["duty_cycle_shift"]
+      },
+      "triangle": {
+        "waveform": "triangle",
+        "volume": 0.7
+      },
+      "noise": {
+        "waveform": "white_noise",
+        "volume": 0.5
+      }
+    },
+    "score": [
+      {
+        "instrument": "pulse1",
+        "channel": "pulse1",
+        "note": "C4", 
+        "duration": 0.5,
+        "time": 0
+      },
+      {
+        "instrument": "pulse1",
+        "channel": "pulse1",
+        "note": "B4", 
+        "duration": 0.5,
+        "time": 0.5
+      },
+      {
+        "instrument": "pulse1",
+        "channel": "pulse1",
+        "note": "A4", 
+        "duration": 0.5,
+        "time": 1
+      }
+
+    ]
+  }
