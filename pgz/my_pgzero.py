@@ -17,6 +17,11 @@ TITLE = 'my pygame zero'
 all_sprites: pygame.sprite.Group = pygame.sprite.Group()
 sprite_groups: Dict[type, pygame.sprite.Group] = {}
 
+running = True
+def close() -> None:
+    global running
+    running = False
+
 pygame.init()
 pygame.mixer.init()
 screen: pygame.Surface = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -169,7 +174,7 @@ def go(
     screensize: 游戏窗口的长宽
 
     '''
-    
+    global running
     screen = pygame.display.set_mode(screensize)
     pygame.display.set_caption(title)
     clock = pygame.time.Clock()
@@ -178,7 +183,6 @@ def go(
         background_img = pygame.transform.scale(bgimg, (screensize[0], screensize[1]))
     except:
         pass
-    running = True
     while running:
         clock.tick(fps)
         for event in pygame.event.get():

@@ -15,6 +15,7 @@ from pgz.my_pgzero import *
 import numpy as np
 import time
 from queue import Queue
+import pygame_screen_record as scr
 
 def timer(func):
     def aaa(*args, **kwargs):
@@ -23,6 +24,16 @@ def timer(func):
         print(time.time()-s)
         return res
     return aaa
+
+def ez_num(num:int) -> str:
+    if abs(num) < 1000:
+        return str(num)
+    elif abs(num) < 10000000:
+        return str(num//1000/10) + '万'
+    elif abs(num) < 100000000000:
+        return str(num//10000000/10) + '亿'
+    else:
+        return ez_num(num/100000000) + '亿'
 
 gamesize = 500
 blocks = np.zeros((gamesize, gamesize), dtype=np.uint8)
@@ -41,6 +52,8 @@ randsurface = pygame.Surface((50*6, gamesize))
 holepos = 0
 real_fps = 0
 into15 = False
+
+filled = -1
 
 class Tower(Actor):
     def __init__(self, coloridx:int=1, pos:Tuple[int, int]=(49, 49)):
@@ -198,7 +211,7 @@ class Square(Actor):
     def draw(self, surface):
         pygame.draw.rect(surface, colormap[self.coloridx], self.rect)
         pygame.draw.rect(surface, (255,255,255), self.rect, 1)
-        draw_text(str(self.num), self.rect.centerx, self.rect.centery, 20, surface=surface)
+        draw_text(ez_num(self.num), self.rect.centerx, self.rect.centery, 20, surface=surface)
 
 class Mkrand(Actor):
     def __init__(self, coloridx:int=1):
@@ -253,7 +266,7 @@ class Mkrand(Actor):
     
     def draw(self, surface):
         pygame.draw.circle(surface, colormap[self.coloridx], (self.rect.centerx+gamesize, self.rect.centery), 10)
-        draw_text(str(self.num), self.rect.centerx+gamesize, self.rect.centery-20, 20, (255, 255, 255), surface=surface)
+        draw_text(ez_num(self.num), self.rect.centerx+gamesize, self.rect.centery-20, 20, (255, 255, 255), surface=surface)
 
 
 def make_bullet(coloridx:int=1):
@@ -305,7 +318,7 @@ def init():
     pygame.draw.rect(randsurface, (0, 255, 0), pygame.Rect(0, gamesize/3*2+100, 300, 25))
 
 def update():
-    global gamechanges, addbullet, tickcnt, busy_bullet, holepos, into15
+    global gamechanges, addbullet, tickcnt, busy_bullet, holepos, into15, filled
     sprite_groups[Tower].update()
     busy_bullet.update()
     sprite_groups[Mkrand].update()
@@ -330,9 +343,16 @@ def update():
         pygame.draw.rect(randsurface, (0,0,0), pygame.Rect(26, 362, 5, 10))
         into15 = True
 
+    if np.sum(blocks != blocks[10, 10]) / np.size(blocks) < 0.05 and blocks[10, 10] != 0 and filled == -1:
+        filled = tickcnt
+        # logger
+        print(blocks, blocks[10, 10], np.sum(blocks != blocks[10, 10]) / np.size(blocks), np.size(blocks), filled, running)
+    if tickcnt - filled > 15*20 and filled != -1:
+        close()
+
 # @timer
 def draw():
-    global blocks, colormap, gamechanges, gamesurface, towers, starttime, real_fps
+    global blocks, colormap, gamechanges, gamesurface, towers, starttime, real_fps, recorder, filled
     while not gamechanges.empty():
         x, y, width, height, color = gamechanges.get()
         blocks[x:x+width-1, y:y+height-1] = color
@@ -353,16 +373,18 @@ def draw():
 
     for tower in towers:
         # pygame.draw.rect(screen, (255, 255, 255), tower.rect, 5)
-        draw_text(f'子弹：{tower.bullet}', tower.rect.centerx, tower.rect.centery+30, 18, (0,0,0))
-        draw_text(f'防御：{tower.health}', tower.rect.centerx, tower.rect.centery-30, 18, (0,0,0))
+        draw_text(f'子弹：{ez_num(tower.bullet)}', tower.rect.centerx, tower.rect.centery+30, 18, (0,0,0))
+        draw_text(f'防御：{ez_num(tower.health)}', tower.rect.centerx, tower.rect.centery-30, 18, (0,0,0))
 
     pygame.draw.circle(screen, (255, 255, 255), (gamesize+holepos*50+25, gamesize/3*2+50), 10)
 
     real_fps = 1/(time.time()-starttime)
     pygame.display.set_caption(f'fps: {1/(time.time()-starttime):.1f}{' - 乱斗模式已开启'*into15}')
 
+    recorder.add_frame(screen)
+
     # logger
-    print(f'{len(busy_bullet.sprites())},{real_fps},{len(sprite_groups.get(Square, []))}')
+    print(f'{len(busy_bullet.sprites())},{real_fps},{len(sprite_groups.get(Square, []))},{filled},{tickcnt}')
     starttime = time.time()
 
 def getevent(event:pygame.event.Event):
@@ -371,4 +393,7 @@ def getevent(event:pygame.event.Event):
     
 init()
 starttime = time.time()
+import video_rec as rec
+recorder = rec.VideoExporter(output_path='./video.mp4', fps=20)
 go(draw=draw, update=update, screensize=SCREENSIZE, getevent=getevent)
+recorder.export()
