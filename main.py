@@ -15,7 +15,6 @@ from pgz.my_pgzero import *
 import numpy as np
 import time
 from queue import Queue
-import pygame_screen_record as scr
 
 def timer(func):
     def aaa(*args, **kwargs):
