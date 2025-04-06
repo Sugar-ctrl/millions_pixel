@@ -392,7 +392,7 @@ def getevent(event:pygame.event.Event):
     
 init()
 starttime = time.time()
-import video_rec as rec
-recorder = rec.VideoExporter(output_path='./video.mp4', fps=20)
+import live
+recorder = live.Live(port=80)
 go(draw=draw, update=update, screensize=SCREENSIZE, getevent=getevent)
 recorder.export()
