@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <body>
+    <span>请输入端口：</span><input type="number" id="port" value="80"></input> 
     <canvas id="gameCanvas"></canvas>
     <div id="stats"></div>
 
@@ -10,32 +11,34 @@
         const stats = document.getElementById('stats')
         let lastTimestamp = 0
 
-        // 初始化WebSocket
-        const ws = new WebSocket('ws://localhost:8000')
-        
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data)
+        setTimeout(() => {
+            // 初始化WebSocket
+            const ws = new WebSocket('ws://localhost:' + document.getElementById('port').value)
             
-            // 渲染画面
-            if(data.type === 'frame') {
-                const img = new Image()
-                img.onload = () => {
-                    canvas.width = img.naturalWidth
-                    canvas.height = img.naturalHeight
-                    ctx.drawImage(img, 0, 0)
-                    
-                    // 显示性能统计
-                    const latency = Date.now() - data.timestamp * 1000
-                    stats.innerHTML = `
-                        分辨率: ${canvas.width}x${canvas.height}<br>
-                        延迟: ${latency.toFixed(1)}ms<br>
-                        帧率: ${(1000 / (Date.now() - lastTimestamp)).toFixed(1)} FPS
-                    `
-                    lastTimestamp = Date.now()
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data)
+                
+                // 渲染画面
+                if(data.type === 'frame') {
+                    const img = new Image()
+                    img.onload = () => {
+                        canvas.height = img.naturalWidth
+                        canvas.width = img.naturalHeight
+                        ctx.drawImage(img, 0, 0)
+                        
+                        // 显示性能统计
+                        const latency = Date.now() - data.timestamp * 1000
+                        stats.innerHTML = `
+                            分辨率: ${canvas.width}x${canvas.height}<br>
+                            延迟: ${latency.toFixed(1)}ms<br>
+                            帧率: ${(1000 / (Date.now() - lastTimestamp)).toFixed(1)} FPS
+                        `
+                        lastTimestamp = Date.now()
+                    }
+                    img.src = `data:image/png;base64,${data.data}`
                 }
-                img.src = `data:image/png;base64,${data.data}`
             }
-        }
+        }, 5000)
 
         // 自动重连
         ws.onclose = () => setTimeout(() => location.reload(), 1000)

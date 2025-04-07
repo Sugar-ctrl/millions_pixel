@@ -54,6 +54,9 @@ into15 = False
 
 filled = -1
 
+# logger
+lastloglen = 0
+
 class Tower(Actor):
     def __init__(self, coloridx:int=1, pos:Tuple[int, int]=(49, 49)):
         super().__init__('tower.png', (255, 255, 255))
@@ -351,7 +354,7 @@ def update():
 
 # @timer
 def draw():
-    global blocks, colormap, gamechanges, gamesurface, towers, starttime, real_fps, recorder, filled
+    global blocks, colormap, gamechanges, gamesurface, towers, starttime, real_fps, recorder, filled, lastloglen
     while not gamechanges.empty():
         x, y, width, height, color = gamechanges.get()
         blocks[x:x+width-1, y:y+height-1] = color
@@ -383,7 +386,9 @@ def draw():
     recorder.add_frame(screen)
 
     # logger
-    print(f'{len(busy_bullet.sprites())},{real_fps},{len(sprite_groups.get(Square, []))},{filled},{tickcnt}')
+    log_content = f'{len(busy_bullet.sprites())},{real_fps},{len(sprite_groups.get(Square, []))},{filled},{tickcnt}'
+    print(' '*lastloglen + '\r' + log_content, end='\r')
+    lastloglen = len(log_content)
     starttime = time.time()
 
 def getevent(event:pygame.event.Event):
@@ -393,6 +398,6 @@ def getevent(event:pygame.event.Event):
 init()
 starttime = time.time()
 import live
-recorder = live.Live(port=80)
+recorder = live.Live()
 go(draw=draw, update=update, screensize=SCREENSIZE, getevent=getevent)
-recorder.export()
+recorder.close()
