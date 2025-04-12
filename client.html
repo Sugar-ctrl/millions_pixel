@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <body>
-    <span>请输入端口：</span><input type="number" id="port" value="80"></input> 
+    <span>请输入端口：</span><input type="number" id="port" value="81"></input> 
     <canvas id="gameCanvas"></canvas>
     <div id="stats"></div>
 
@@ -48,10 +48,10 @@
                     img.src = `data:image/png;base64,${data.data}`
                 }
             }
+            // 自动重连
+            ws.onclose = () => setTimeout(() => location.reload(), 1000)
         }, 5000)
 
-        // 自动重连
-        ws.onclose = () => setTimeout(() => location.reload(), 1000)
     </script>
 
     <style>
