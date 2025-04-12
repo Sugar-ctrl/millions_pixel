@@ -381,9 +381,9 @@ def draw():
     pygame.draw.circle(screen, (255, 255, 255), (gamesize+holepos*50+25, gamesize/3*2+50), 10)
 
     real_fps = 1/(time.time()-starttime)
-    pygame.display.set_caption(f'fps: {1/(time.time()-starttime):.1f}{' - 乱斗模式已开启'*into15}')
+    pygame.display.set_caption(f'fps: {1/(time.time()-starttime):.1f}{" - 乱斗模式已开启"*into15}{f" - 已霸屏{tickcnt-filled}帧"*(filled!=-1)}')
 
-    recorder.add_frame(screen)
+    recorder.add_frame(screen, others={'server_fps': real_fps, 'into15': into15, 'filled': filled, 'tickcnt': tickcnt})
 
     # logger
     log_content = f'{len(busy_bullet.sprites())},{real_fps},{len(sprite_groups.get(Square, []))},{filled},{tickcnt}'

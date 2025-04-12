@@ -22,17 +22,27 @@
                 if(data.type === 'frame') {
                     const img = new Image()
                     img.onload = () => {
-                        canvas.height = img.naturalWidth
-                        canvas.width = img.naturalHeight
+                        canvas.width = img.naturalWidth
+                        canvas.height = img.naturalHeight
                         ctx.drawImage(img, 0, 0)
                         
-                        // 显示性能统计
+                        // 显示性能统计与画面外游戏信息
                         const latency = Date.now() - data.timestamp * 1000
-                        stats.innerHTML = `
+                        statsHtml = `
                             分辨率: ${canvas.width}x${canvas.height}<br>
                             延迟: ${latency.toFixed(1)}ms<br>
-                            帧率: ${(1000 / (Date.now() - lastTimestamp)).toFixed(1)} FPS
+                            客户端帧率: ${(1000 / (Date.now() - lastTimestamp)).toFixed(1)} FPS<br>
+                            服务端帧率: ${data.others.server_fps.toFixed(1)} FPS<br>
+                            <hr>
+                            已运行: ${data.others.tickcnt}帧
                         `
+                        if (data.others.into15) {
+                            statsHtml += '<br>乱斗模式已开启'
+                        }
+                        if (data.others.filled != -1) {
+                            statsHtml += `<br>已霸屏${(data.others.tickcnt-data.others.filled)}帧`
+                        }
+                        stats.innerHTML = statsHtml
                         lastTimestamp = Date.now()
                     }
                     img.src = `data:image/png;base64,${data.data}`
