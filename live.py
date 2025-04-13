@@ -11,8 +11,8 @@ async def handler(ws, path, server):
     print('client connected')
     server.clients.add(ws)
     try:
-        async for msg in ws:
-            print('received message:', msg)
+        while server.running:
+            await ws.recv()
     except:
         pass
     finally:

@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <meta charset="UTF-8">
+    <title>没多少像素倍增游戏 - 直播</title>
+</head>
 <body>
     <span>请输入端口：</span><input type="number" id="port" value="81"></input> 
     <canvas id="gameCanvas"></canvas>
@@ -13,7 +17,7 @@
 
         setTimeout(() => {
             // 初始化WebSocket
-            const ws = new WebSocket('ws://localhost:' + document.getElementById('port').value)
+            const ws = new WebSocket('ws://'+ location.hostname + ':' + document.getElementById('port').value)
             
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data)
@@ -49,7 +53,10 @@
                 }
             }
             // 自动重连
-            ws.onclose = () => setTimeout(() => location.reload(), 1000)
+            ws.onclose = () => {
+                console.log('WebSocket连接已关闭，尝试重新连接...')
+                setTimeout(() => location.reload(), 1000)
+            }
         }, 5000)
 
     </script>
