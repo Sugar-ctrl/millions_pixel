@@ -46,6 +46,9 @@
                         if (data.others.filled != -1) {
                             statsHtml += `<br>已霸屏${(data.others.tickcnt-data.others.filled)}帧`
                         }
+                        if (data.others.tickcnt > 3000){
+                            statsHtml += '<br>已开始快速结束'
+                        }
                         stats.innerHTML = statsHtml
                         lastTimestamp = Date.now()
                     }

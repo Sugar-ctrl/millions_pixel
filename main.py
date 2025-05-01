@@ -226,7 +226,7 @@ class Mkrand(Actor):
     
     def update(self):
         super().update()
-        global towers, holepos, gamesize
+        global towers, holepos, gamesize, tickcnt
 
         if self.rect.colliderect(pygame.Rect(0, gamesize/3*2-25, 300, 25)):
             self.rect.centery = gamesize/3*2+50
@@ -262,6 +262,10 @@ class Mkrand(Actor):
             self.rect.centery = random.randint(0, 100)
             self.rect.centerx = self.coloridx*50+25
         self.rect.y += random.randint(10, 15)
+
+        if tickcnt > 3000:
+            self.num *= random.uniform(1,1.1)
+            self.num = int(self.num)
 
         if towers[self.coloridx-1].health <= 0:
             self.kill()
