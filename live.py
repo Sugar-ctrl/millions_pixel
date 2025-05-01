@@ -16,13 +16,14 @@ async def handler(ws, path, server):
     except:
         pass
     finally:
-        server.clients.remove(ws)
+        server.removing.add(ws)
         print('client disconnected')
 
 class Live:
     def __init__(self, port:int=80):
         self.port = port
         self.clients = set()
+        self.removing = set()
         while True:
             if port>65535:
                 print('port out of range')
@@ -54,11 +55,11 @@ class Live:
         print('server closed')
 
     async def broadcast(self, msg):
-        removing = set()
         for client in self.clients:
             try:
                 await client.send(msg)
-            except ws.exceptions.ConnectionClosedError:
-                removing.add(client)
-        for i in removing:
+            except (ws.exceptions.ConnectionClosedError, ws.exceptions.ConnectionClosedOK):
+                self.removing.add(client)
+        for i in self.removing:
             self.clients.remove(i)
+        self.removing = set()
