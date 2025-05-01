@@ -61,5 +61,9 @@ class Live:
             except (ws.exceptions.ConnectionClosedError, ws.exceptions.ConnectionClosedOK):
                 self.removing.add(client)
         for i in self.removing:
-            self.clients.remove(i)
+            try:
+                self.clients.remove(i)
+            except KeyError: pass
+            finally:
+                print('client disconnetced')
         self.removing = set()
