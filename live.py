@@ -54,8 +54,11 @@ class Live:
         print('server closed')
 
     async def broadcast(self, msg):
+        removing = set()
         for client in self.clients:
             try:
                 await client.send(msg)
             except ws.exceptions.ConnectionClosedError:
-                self.clients.remove(client)
+                removing.add(client)
+        for i in removing:
+            self.clients.remove(i)
