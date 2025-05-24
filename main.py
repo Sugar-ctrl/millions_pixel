@@ -96,13 +96,13 @@ class Bullet(Actor):
             self.truey += self.addy
             self.rect.centerx, self.rect.centery = self.truex, self.truey
             # 碰到边缘就反弹
-            if self.rect.left < 0 or self.rect.right > gamesize-1:
+            if self.rect.left < 2 or self.rect.right > gamesize+1:
                 self.addx = -self.addx
                 self.truex += self.addx
                 # logger
                 if self.duang == 999999999:
                     self.duang = tickcnt
-            if self.rect.top < 0 or self.rect.bottom > gamesize-1:
+            if self.rect.top < 2 or self.rect.bottom > gamesize+1:
                 self.addy = -self.addy
                 self.truey += self.addy
                 # logger
@@ -116,21 +116,30 @@ class Bullet(Actor):
                         tower.health -= 1
                         self.free()
             
-            for i in range(-1,1):
-                for j in range(-1,1):
-                    if blocks[self.rect.left+i, self.rect.top+j] != self.coloridx and self.rect.left+i >= 0 and self.rect.right+i < gamesize-1 and self.rect.top+j >= 0 and self.rect.bottom+j < gamesize-1:
-                        gamechanges.put((self.rect.left+i-1, self.rect.top+j-1, 3, 3, self.coloridx))
-                        # logger
-                        if self.duang == tickcnt:
-                            print(f'{self.coloridx}颜色子弹因碰撞{blocks[self.rect.left+i, self.rect.top+j]}颜色方块（坐标：{self.truex, self.truey, self.rect.center}）而死亡，用时{tickcnt-self.duang}帧')
-                        self.free()
+            # for i in range(-1,1):
+            #     for j in range(-1,1):
+            #         if blocks[self.rect.left+i, self.rect.top+j] != self.coloridx and self.rect.left+i >= 0 and self.rect.right+i < gamesize-1 and self.rect.top+j >= 0 and self.rect.bottom+j < gamesize-1:
+            #             gamechanges.put((self.rect.left+i-1, self.rect.top+j-1, 3, 3, self.coloridx))
+            #             # logger
+            #             if self.duang == tickcnt:
+            #                 print(f'{self.coloridx}颜色子弹因碰撞{blocks[self.rect.left+i, self.rect.top+j]}颜色方块（坐标：{self.truex, self.truey, self.rect.center}）而死亡，用时{tickcnt-self.duang}帧')
+            #             self.free()
+
+            if (blocks[self.rect.left-1:self.rect.left+2, self.rect.top-1:self.rect.top+2] != self.coloridx).sum() >= 3:
+                gamechanges.put((self.rect.left-1, self.rect.top-1, 3, 3, self.coloridx))
+                # # logger
+                # if self.duang == tickcnt:
+                #     print(f'{self.coloridx}颜色子弹因碰撞{blocks[self.rect.left, self.rect.top]}颜色方块（坐标：{self.truex, self.truey, self.rect.center}）而死亡，用时{tickcnt-self.duang}帧')
+                self.free()
 
             for i in pygame.sprite.spritecollide(self, sprite_groups.get(Square, pygame.sprite.Group()), False):
                 if i.coloridx == self.coloridx:
-                    i.num += 1
+                    i.num += 1 + towers[self.coloridx-1].bullet//1000
+                    towers[self.coloridx-1].bullet -= towers[self.coloridx-1].bullet//1000
                     self.free()
                 else:
-                    i.num -= 1
+                    i.num -= 1 + towers[self.coloridx-1].bullet//1000
+                    towers[self.coloridx-1].bullet -= towers[self.coloridx-1].bullet//1000
                     if i.num <= 0:
                         i.kill()
                     self.free()
@@ -349,7 +358,7 @@ def update():
         pygame.draw.rect(randsurface, (0,0,0), pygame.Rect(26, 362, 5, 10))
         into15 = True
 
-    if np.sum(blocks != blocks[10, 10]) / np.size(blocks) < 0.05 and blocks[10, 10] != 0 and filled == -1:
+    if np.sum(blocks != blocks[100, 100]) / np.size(blocks) < 0.05 and blocks[100, 100] != 0 and filled == -1:
         filled = tickcnt
         # logger
         print(blocks, blocks[10, 10], np.sum(blocks != blocks[10, 10]) / np.size(blocks), np.size(blocks), filled, running)
