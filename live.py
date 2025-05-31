@@ -1,5 +1,5 @@
 import io
-from pygame import Surface, surfarray
+from pygame import Surface, surfarray, image
 import websockets as ws
 import asyncio as aio
 from PIL import Image
@@ -37,12 +37,8 @@ class Live:
                 print(f'port {port} is in use, trying {port+1}')
                 port += 1
     def add_frame(self, blocks:Surface, others:Dict):
-        frame = surfarray.array3d(blocks)
-        # 将[x,y,z]转换为[y,x,z]
-        frame = frame.transpose([1, 0, 2])
-        frame = Image.fromarray(frame)
         byte_io = io.BytesIO()
-        frame.save(byte_io, format='PNG')
+        image.save(blocks, byte_io, 'png')
         b64 = b64encode(byte_io.getvalue()).decode('utf-8')
         content = {'type': 'frame', 'data': b64, 'others': others}
         aio.get_event_loop().run_until_complete(self.broadcast(json.dumps(content, separators=(',', ':'))))
@@ -55,15 +51,16 @@ class Live:
         print('server closed')
 
     async def broadcast(self, msg):
-        for client in self.clients:
-            try:
-                await client.send(msg)
-            except (ws.exceptions.ConnectionClosedError, ws.exceptions.ConnectionClosedOK):
-                self.removing.add(client)
-        for i in self.removing:
-            try:
-                self.clients.remove(i)
-            except KeyError: pass
-            finally:
-                print('client disconnetced')
-        self.removing = set()
+        # 批量发送减少系统调用
+        tasks = []
+        for client in list(self.clients):
+            if client.open:
+                tasks.append(client.send(msg))
+        
+        # 并行发送
+        await aio.gather(*tasks, return_exceptions=True)
+        
+        # 清理断开连接的客户端
+        self.removing = [c for c in self.clients if not c.open]
+        for c in self.removing:
+            self.clients.remove(c)
